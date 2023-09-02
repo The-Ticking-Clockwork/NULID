@@ -62,6 +62,12 @@ proc parseNulid*(ulidStr: string): NULID =
   result.randomness = UInt128.decode(ulidStr[10..25])
 
 proc `$`*(ulid: NULID): string =
-  result = '0' & int64.encode(ulid.timestamp, 10) & UInt128.encode(ulid.randomness, 16)
+  var res = i128(ulid.timestamp)
+
+  res = res shl 80
+  res.hi += cast[int64](ulid.randomness.hi)
+  res.lo += ulid.randomness.lo
+
+  result = '0' & Int128.encode(res, 26)
 
 proc `==`*(a: NULID, b: string): bool = a == parseNulid(b)
