@@ -106,4 +106,7 @@ proc parseNulid*(ulidStr: string): NULID =
   result.randomness = UInt128.decode(ulidStr[10..25])
 
 proc `$`*(ulid: NULID): string =
-  result = '0' & Int128.encode(ulid.toInt128(), 26)
+  result = Int128.encode(ulid.toInt128(), 26)
+
+  if result.len < 26:
+    result.insert("0")
