@@ -1,7 +1,7 @@
 # Package
 
-version       = "0.1.1"
-author        = "Mythical Forest Collective"
+version       = "0.2.0"
+author        = "Yu Vitaqua fer Chronos"
 description   = "An implementation of ULID!"
 license       = "CC0"
 srcDir        = "src"

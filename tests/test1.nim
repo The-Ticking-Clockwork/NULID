@@ -24,3 +24,16 @@ test "NULID Parsing":
     randomness: u128("541019288874337045949482"))
 
   check parseNulid(nulidStr) == nulid
+
+test "NULID Int128 Conversion":
+  let nulid = parseNulid("01H999MBGTEA8BDS0M5AWEBB1A")
+
+  check NULID.fromInt128(nulid.toInt128()) == nulid
+
+test "NULID Binary Format":
+  let
+    nulid = parseNulid("01H999MBGTEA8BDS0M5AWEBB1A")
+    nulidBytes = [1.byte, 138, 82, 154, 46, 26, 114, 144, 182, 228, 20, 42, 184, 229, 172, 42]
+
+  check nulid == NULID.fromBytes(nulidBytes)
+  check nulid.toBytes == nulidBytes
