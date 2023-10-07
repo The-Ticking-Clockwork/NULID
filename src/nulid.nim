@@ -144,10 +144,10 @@ func toBytes*(ulid: NULID): array[16, byte] =
   ## Allows for a NULID to be converted to a byte array.
   runnableExamples:
     let
-      nulid = parseNulid("01H999MBGTEA8BDS0M5AWEBB1A")
-      nulidBytes = [1.byte, 138, 82, 154, 46, 26, 114, 144, 182, 228, 20, 42, 184, 229, 172, 42]
+      ulid = parseNulid("01H999MBGTEA8BDS0M5AWEBB1A")
+      ulidBytes = [1.byte, 138, 82, 154, 46, 26, 114, 144, 182, 228, 20, 42, 184, 229, 172, 42]
 
-    echo nulid == NULID.fromBytes(nulidBytes)
+    echo ulid == NULID.fromBytes(ulidBytes)
 
   when cpuEndian == littleEndian:
     return cast[array[16, byte]](ulid.toInt128().swapBytes())
