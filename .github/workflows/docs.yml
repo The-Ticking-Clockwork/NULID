@@ -1,0 +1,56 @@
+name: Build Docs
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+env:
+  nim-version: 'stable'
+  package-name: nulid
+  nim-src: src/nulid.nim
+  deploy-dir: .gh-pages
+
+jobs:
+  docs:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: jiro4989/setup-nim-action@v1
+        with:
+          nim-version: ${{ env.nim-version }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: nimble install -Y
+
+      - run: nimble doc --index:on --project --git.url:https://github.com/${{ github.repository }} --git.commit:${{ github.ref_name }} --out:${{ env.deploy-dir }} ${{ env.nim-src }}
+
+      - name: "Copy to index.html"
+        run: cp ${{ env.deploy-dir }}/${{ env.package-name }}.html ${{ env.deploy-dir }}/index.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: ${{ env.deploy-dir }}
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
