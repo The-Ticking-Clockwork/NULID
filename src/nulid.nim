@@ -8,6 +8,8 @@ import pkg/[
   nint128
 ]
 
+import ./nulid/private/stew/endians2
+
 const insecureRandom = defined(nulidInsecureRandom) or defined(js) # No sysrand on the JS backend
 
 when insecureRandom:
@@ -15,9 +17,6 @@ when insecureRandom:
 
 else:
   import std/sysrand
-
-# Relying on internal implementation details isn't great, but it's unlikely to change so...
-import pkg/nint128/vendor/stew/endians2
 
 const HighUint80 = u128("1208925819614629174706176")
 
@@ -31,11 +30,11 @@ type
     ## A NULID generator object, contains details needed to follow the spec.
     ## A generator was made to be compliant with the NULID spec and also to be
     ## threadsafe not use globals that could change.
-    lastTime: int64 ## Timestamp of last ULID
-    random: UInt128 ## A random number
+    lastTime: int64 # Timestamp of last ULID
+    random: UInt128 # A random number
 
     when insecureRandom:
-      rand: Rand ## Random generator when using insecure random
+      rand: Rand # Random generator when using insecure random
 
 proc initNulidGenerator*(): NULIDGenerator =
   ## Initialises a `NULIDGenerator` for use.
@@ -44,6 +43,7 @@ proc initNulidGenerator*(): NULIDGenerator =
   when insecureRandom:
     result.rand = initRand()
 
+# Discouraged to use it but it's fine for single-threaded apps really
 let globalGen = initNulidGenerator()
 
 func swapBytes(x: Int128): Int128 =
@@ -69,7 +69,7 @@ proc randomBits(n: NULIDGenerator): UInt128 =
 
     if not urandom(rnd):
       raise newException(OSError, "Was unable to use a secure source of randomness! " &
-        "Please either compile with `--define:nulidInsecureRandom` or fix this!")
+        "Please either compile with `-d:nulidInsecureRandom` or fix this!")
 
     arr[6..15] = rnd
 
@@ -183,6 +183,3 @@ func `$`*(ulid: NULID): string =
     echo nulidSync()
 
   result = Int128.encode(ulid.toInt128(), 26)
-
-  if result.len < 26: # Crappy fix
-    result.insert("0")
