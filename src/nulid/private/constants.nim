@@ -1,4 +1,5 @@
-# No sysrand on the JS backend nor VM
-const InsecureRandom* = defined(nulidInsecureRandom) or defined(js) or defined(nimvm)
+import nint128
 
-const NulidVersion* = "0.2.4"
+const HighUint80* = u128("1208925819614629174706176")
+# No sysrand on the JS backend nor VM (does this even work on either?)
+const InsecureRandom* = defined(nulidInsecureRandom) or defined(js) or defined(nimvm)

@@ -8,22 +8,15 @@ import pkg/[
   nint128
 ]
 
-import ./nulid/private/[
-  dochelpers,
-  constants
-]
+import ./nulid/private/constants
 
 import ./nulid/private/stew/endians2
-
-fmtCmnt "NULID Version: {NulidVersion}"
 
 when InsecureRandom:
   import std/random
 
 else:
   import std/sysrand
-
-const HighUint80 = u128("1208925819614629174706176")
 
 type
   NULID* = object
