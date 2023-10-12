@@ -11,11 +11,9 @@ import pkg/nint128
 
 import nulid
 
-let gen = initNulidGenerator()
-
 test "NULID Generation":
   for _ in 0..5:
-    let nulid = gen.nulidSync()
+    let nulid = nulidSync()
     echo nulid
 
 test "NULID Parsing":

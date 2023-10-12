@@ -1,6 +1,8 @@
+import src/nulid/private/constants
+
 # Package
 
-version       = "0.2.3"
+version       = NulidVersion
 author        = "Yu Vitaqua fer Chronos"
 description   = "An implementation of ULID!"
 license       = "CC0"

@@ -8,11 +8,16 @@ import pkg/[
   nint128
 ]
 
+import ./nulid/private/[
+  dochelpers,
+  constants
+]
+
 import ./nulid/private/stew/endians2
 
-const insecureRandom = defined(nulidInsecureRandom) or defined(js) # No sysrand on the JS backend
+fmtCmnt "NULID Version: {NulidVersion}"
 
-when insecureRandom:
+when InsecureRandom:
   import std/random
 
 else:
@@ -23,8 +28,8 @@ const HighUint80 = u128("1208925819614629174706176")
 type
   NULID* = object
     ## An object representing a ULID.
-    timestamp*: int64 = 0
-    randomness*: UInt128 = 0.u128
+    timestamp*: int64
+    randomness*: UInt128
 
   NULIDGenerator* = ref object
     ## A NULID generator object, contains details needed to follow the spec.
@@ -33,14 +38,14 @@ type
     lastTime: int64 # Timestamp of last ULID
     random: UInt128 # A random number
 
-    when insecureRandom:
+    when InsecureRandom:
       rand: Rand # Random generator when using insecure random
 
 proc initNulidGenerator*(): NULIDGenerator =
   ## Initialises a `NULIDGenerator` for use.
   result = NULIDGenerator(lastTime: 0, random: 0.u128)
 
-  when insecureRandom:
+  when InsecureRandom:
     result.rand = initRand()
 
 # Discouraged to use it but it's fine for single-threaded apps really
@@ -56,7 +61,7 @@ func toArray[T](oa: openArray[T], size: static Slice[int]): array[size.len, T] =
 proc randomBits(n: NULIDGenerator): UInt128 =
   var arr: array[16, byte]
 
-  when insecureRandom:
+  when InsecureRandom:
     var rnd: array[10, byte]
 
     rnd[0..7] = cast[array[8, byte]](n.rand.next())
