@@ -18,6 +18,13 @@ when InsecureRandom:
 else:
   import std/sysrand
 
+##[
+Note: `--define:nulidInsecureRandom` can be passed to the compiler to make it
+so that `std/random` is used instead of `std/sysrand`.
+The JS backend and Nimscript use this by default (whether either work with NULID
+is untested).
+]##
+
 type
   NULID* = object
     ## An object representing a ULID.
