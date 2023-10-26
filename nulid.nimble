@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.2.5"
+version       = "1.0.0"
 author        = "Yu Vitaqua fer Chronos"
 description   = "An implementation of ULID!"
 license       = "CC0"

@@ -13,7 +13,7 @@ import nulid
 
 test "NULID Generation":
   for _ in 0..5:
-    let nulid = nulidSync()
+    let nulid = nulid()
     echo nulid
 
 test "NULID Parsing":
