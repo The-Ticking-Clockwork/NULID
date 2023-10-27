@@ -195,6 +195,8 @@ func parse*(_: typedesc[ULID], ulidStr: string): ULID =
   result.timestamp = int64.decode(ulidStr[0..9])
   result.randomness = UInt128.decode(ulidStr[10..25])
 
+proc `==`*(a, b: ULID): bool = a.toInt128() == b.toInt128()
+
 func `$`*(ulid: ULID): string =
   ## Returns the string representation of a ULID.
   runnableExamples:
