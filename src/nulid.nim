@@ -1,5 +1,4 @@
 import std/[
-  rlocks,
   times,
   os
 ]
@@ -8,7 +7,6 @@ import crockfordb32
 import nint128
 
 import ./nulid/private/constants
-
 import ./nulid/private/stew/endians2
 
 when InsecureRandom:
@@ -17,12 +15,17 @@ when InsecureRandom:
 else:
   import std/sysrand
 
-##[
-Note: `--define:nulidInsecureRandom` can be passed to the compiler to make it
-so that `std/random` is used instead of `std/sysrand`.
+when not NoLocks:
+  import std/rlocks
 
-The JS backend and Nimscript use this by default (whether either work with NULID,
-is assumed to be no, due to locks being used).
+##[
+Note: There are 2 defines that can be passed to the compiler to trigger different
+functionality in this library at runtime, they are listed here:
+  - `--define:nulidInsecureRandom`: Uses `std/random` instead of `std/sysrand`.
+  - `--define:nulidNoLocks`
+
+The JS backend and Nimscript use both of these flags by default (whether either work
+with NULID is untested).
 ]##
 
 type
@@ -35,22 +38,40 @@ type
     ## A `ULID` generator object, contains details needed to follow the spec.
     ## A generator was made to be compliant with the ULID spec and also to be
     ## threadsafe not use globals that could change.
-    lock*: RLock
-    lastTime {.guard: lock.}: int64 # Timestamp of last ULID, 48 bits
-    random {.guard: lock.}: UInt128 # A random number, 80 bits
+    when NoLocks:
+      lastTime: int64 # Timestamp of last ULID, 48 bits
+      random: UInt128 # A random number, 80 bits
 
-    when InsecureRandom:
-      rand {.guard: lock.}: Rand # Random generator when using insecure random
+      when InsecureRandom:
+        rand: Rand # Random generator when using insecure random
+
+    else:
+      lock*: RLock
+      lastTime {.guard: lock.}: int64 # Timestamp of last ULID, 48 bits
+      random {.guard: lock.}: UInt128 # A random number, 80 bits
+
+      when InsecureRandom:
+        rand {.guard: lock.}: Rand # Random generator when using insecure random
+
+template withLock(gen: ULIDGenerator, body: typed) =
+  when NoLocks:
+    body
+  else:
+    {.cast(gcsafe).}:
+      gen.lock.withRLock:
+        body
 
 proc initUlidGenerator*(): ULIDGenerator =
   ## Initialises a `ULIDGenerator` for use.
-  result = ULIDGenerator(lock: RLock(), lastTime: 0, random: 0.u128)
-  initRLock(result.lock)
+  when NoLocks:
+    result = ULIDGenerator(lastTime: 0, random: 0.u128)
+  else:
+    result = ULIDGenerator(lock: RLock(), lastTime: 0, random: 0.u128)
+    initRLock(result.lock)
 
   when InsecureRandom:
-    {.cast(gcsafe).}:
-      withRLock(result.lock):
-        result.rand = initRand()
+    result.withLock:
+      result.rand = initRand()
 
 let globalGen = initUlidGenerator()
 
@@ -67,10 +88,9 @@ proc randomBits(n: ULIDGenerator): UInt128 {.gcsafe.} =
   when InsecureRandom:
     var rnd: array[10, byte]
 
-    {.cast(gcsafe).}:
-      withRLock(n.lock):
-        rnd[0..7] = cast[array[8, byte]](n.rand.next())
-        rnd[8..9] = cast[array[2, byte]](n.rand.rand(high(int16)).int16)
+    n.withLock:
+      rnd[0..7] = cast[array[8, byte]](n.rand.next())
+      rnd[8..9] = cast[array[2, byte]](n.rand.rand(high(int16)).int16)
 
     arr[6..15] = rnd
 
@@ -90,14 +110,13 @@ template getTime: int64 = (epochTime() * 1000).int64
 proc wait(gen: ULIDGenerator): int64 {.gcsafe.} =
   result = getTime()
 
-  {.cast(gcsafe).}:
-    withRLock(gen.lock):
-      while result <= gen.lastTime:
-        sleep(1)
-        result = getTime()
+  gen.withLock:
+    while result <= gen.lastTime:
+      sleep(1)
+      result = getTime()
 
-        if result < gen.lastTime:
-          raise newException(OSError, "Time went backwards!")
+      if result < gen.lastTime:
+        raise newException(OSError, "Time went backwards!")
 
 proc ulid*(gen: ULIDGenerator, timestamp = 0'i64, randomness = u128(0)): ULID =
   ## Generate a `ULID`, if timestamp is equal to `0`, the `randomness` parameter
@@ -110,19 +129,18 @@ proc ulid*(gen: ULIDGenerator, timestamp = 0'i64, randomness = u128(0)): ULID =
   if timestamp == 0:
     var now = getTime()
 
-    {.cast(gcsafe).}:
-      withRLock(gen.lock):
-        if gen.lastTime == now:
-          inc gen.random
+    gen.withLock:
+      if gen.lastTime == now:
+        inc gen.random
 
-          if gen.random == HighUInt80:
-            now = gen.wait()
-            gen.random = gen.randomBits()
-
-        else:
+        if gen.random == HighUInt80:
+          now = gen.wait()
           gen.random = gen.randomBits()
 
-        result.randomness = gen.random
+      else:
+        gen.random = gen.randomBits()
+
+      result.randomness = gen.random
 
     result.timestamp = now
 
@@ -203,3 +221,22 @@ func `$`*(ulid: ULID): string =
     echo $ulid()
 
   result = Int128.encode(ulid.toInt128(), 26)
+
+when HasJsony:
+  import jsony
+
+  proc dumpHook*(s: var string, ulid: ULID) = s.dumpHook($ulid)
+  proc parseHook*(s: string, i: var int, ulid: var ULID) =
+    var res: string
+    parseHook(s, i, res)
+    ulid = ULID.parse(res)
+
+when HasDebby:
+  import std/sequtils
+  import debby/common
+
+  func sqlDumpHook*(v: ULID): string = sqlDumpHook(cast[Bytes](v.toBytes().toSeq()))
+  func sqlParseHook*(data: string, v: var ULID) =
+    var res: Bytes
+    sqlParseHook(data, res)
+    v = ULID.fromBytes(cast[seq[byte]](res))
