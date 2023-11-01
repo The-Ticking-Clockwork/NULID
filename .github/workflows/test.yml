@@ -20,4 +20,20 @@ jobs:
 
       - run: nimble install -Y
 
-      - run: nimble test
+      - name: Run Tests C (Normal Usage)
+        run: nimble test
+
+      - name: Run Tests C (Locks Disabled)
+        run: nimble test -d:nulidNoLocks
+
+      - name: Run Tests C (Insecure Random)
+        run: nimble test -d:nulidInsecureRandom
+
+      - name: Run Tests C (Insecure Random & Locks Disabled)
+        run: nimble test -d:nulidInsecureRandom -d:nulidNoLocks
+
+      - name: Run Tests JS (Normal Usage; Locks Disabled by Default)
+        run: nimble test -b:js
+
+      - name: Run Tests JS (Insecure Random)
+        run: nimble test -b:js -d:nulidInsecureRandom
