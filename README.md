@@ -13,6 +13,10 @@ via Termux!
 
 `-d:nulidNoLocks`: Disables any usage of locks within the program.
 
+The JS backend automatically defines `-d:nulidNoLocks` while Nimscript
+defines both of these flags.
+
+
 ## Usage
 ```nim
 let gen = initUlidGenerator()

@@ -7,7 +7,16 @@
 
 import unittest
 
-import pkg/nint128
+const UlidRandStr = "541019288874337045949482"
+
+when not defined(js):
+  import nint128
+
+  const UlidRand = u128(UlidRandStr)
+else:
+  import std/jsbigints
+
+  let UlidRand = big(UlidRandStr)
 
 import nulid
 
@@ -19,7 +28,7 @@ test "ULID Generation":
 test "ULID Parsing":
   let ulidStr = "01H999MBGTEA8BDS0M5AWEBB1A"
   let ulid = ULID(timestamp: 1693602950682,
-    randomness: u128("541019288874337045949482"))
+    randomness: UlidRand)
 
   check ULID.parse(ulidStr) == ulid
 
@@ -28,10 +37,13 @@ test "ULID Int128 Conversion":
 
   check ULID.fromInt128(ulid.toInt128()) == ulid
 
-test "ULID Binary Format":
-  let
-    ulid = ULID.parse("01H999MBGTEA8BDS0M5AWEBB1A")
-    ulidBytes = [1.byte, 138, 82, 154, 46, 26, 114, 144, 182, 228, 20, 42, 184, 229, 172, 42]
+when not defined(js):
+  # Not planned to be implemented yet for the JS backend
 
-  check ulid == ULID.fromBytes(ulidBytes)
-  check ulid.toBytes == ulidBytes
+  test "ULID Binary Format":
+    let
+      ulid = ULID.parse("01H999MBGTEA8BDS0M5AWEBB1A")
+      ulidBytes = [1.byte, 138, 82, 154, 46, 26, 114, 144, 182, 228, 20, 42, 184, 229, 172, 42]
+
+    check ulid == ULID.fromBytes(ulidBytes)
+    check ulid.toBytes == ulidBytes
