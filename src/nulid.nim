@@ -1,6 +1,5 @@
 import std/[
-  times,
-  os
+  times
 ]
 
 import crockfordb32
@@ -8,6 +7,7 @@ import crockfordb32
 import ./nulid/private/constants
 
 when not defined(js):
+  import std/os
   import nint128
 
   import ./nulid/private/stew/endians2
@@ -41,8 +41,11 @@ else:
   type UInt128DropIn = JsBigInt
 
 type
-  ULIDGenerationError* = object of CatchableError
-  ULIDGenerationDefect* = object of Defect
+  ULIDError* = object of CatchableError
+  ULIDDefect* = object of Defect
+
+  ULIDGenerationError* = object of ULIDError
+  ULIDGenerationDefect* = object of ULIDDefect
 
   ULID* = object
     ## An object representing a ULID.
@@ -74,6 +77,7 @@ type
       when InsecureRandom:
         rand {.guard: lock.}: Rand # Random generator when using insecure random
 
+
 template withLock(gen: ULIDGenerator, body: typed) =
   when NoLocks:
     body
@@ -88,6 +92,7 @@ template withLock(gen: ULIDGenerator, body: typed) =
         {.cast(gcsafe).}:
           release(gen.lock)
 
+
 proc initUlidGenerator*(): ULIDGenerator =
   ## Initialises a `ULIDGenerator` for use.
   when NoLocks:
@@ -100,15 +105,19 @@ proc initUlidGenerator*(): ULIDGenerator =
     result.withLock:
       result.rand = initRand()
 
+
 let globalGen = initUlidGenerator()
+
 
 when not defined(js):
   func swapBytes(x: Int128): Int128 =
     result.lo = swapBytes(cast[uint64](x.hi))
     result.hi = cast[int64](swapBytes(x.lo))
 
+
 func toArray[T](oa: openArray[T], size: static Slice[int]): array[size.len, T] =
   result[0..<size.len] = oa[size]
+
 
 proc randomBits(n: ULIDGenerator): UInt128DropIn {.gcsafe.} =
   var arr: array[16, byte]
@@ -117,8 +126,13 @@ proc randomBits(n: ULIDGenerator): UInt128DropIn {.gcsafe.} =
     var rnd: array[10, byte]
 
     n.withLock:
-      rnd[0..7] = cast[array[8, byte]](n.rand.next())
-      rnd[8..9] = cast[array[2, byte]](n.rand.rand(high(int16)).int16)
+      when not defined(js):
+        rnd[0..7] = cast[array[8, byte]](n.rand.next())
+        rnd[8..9] = cast[array[2, byte]](n.rand.rand(high(uint16)).uint16)
+
+      else:
+        for i in 0..9:
+          rnd[i] = n.rand.rand(high(byte)).byte
 
     arr[6..15] = rnd
 
@@ -127,7 +141,7 @@ proc randomBits(n: ULIDGenerator): UInt128DropIn {.gcsafe.} =
 
     if not urandom(rnd):
       raise newException(ULIDGenerationDefect, "Was unable to use a secure source of randomness! " &
-        "Please either compile with `-d:nulidInsecureRandom` or fix this!")
+        "Please either compile with `-d:nulidInsecureRandom` or fix this somehow!")
 
     arr[6..15] = rnd
 
@@ -139,7 +153,9 @@ proc randomBits(n: ULIDGenerator): UInt128DropIn {.gcsafe.} =
       result = result shl 8'big
       result += big(i)
 
+
 template getTime: int64 = (epochTime() * 1000).int64
+
 
 proc wait(gen: ULIDGenerator): int64 {.gcsafe.} =
   when not defined(js):
@@ -154,9 +170,10 @@ proc wait(gen: ULIDGenerator): int64 {.gcsafe.} =
           raise newException(ULIDGenerationError, "Time went backwards!")
 
   else:
-    raise newException(ULIDGenerationError, "Behaviour unsupported on the JS backend.")
+    raise newException(ULIDGenerationError, "Couldn't generate ULID! Try again in a millisecond.")
 
-proc ulid*(gen: ULIDGenerator, timestamp = LowInt48, randomness = LowUint80): ULID =
+
+proc ulid*(gen: ULIDGenerator, timestamp = LowInt48, randomness = LowUint80): ULID {.gcsafe.} =
   ## Generate a `ULID`, if timestamp is equal to `0`, the `randomness` parameter
   ## will be ignored.
   runnableExamples:
@@ -186,6 +203,7 @@ proc ulid*(gen: ULIDGenerator, timestamp = LowInt48, randomness = LowUint80): UL
     result.timestamp = clamp(timestamp, LowInt48, HighInt48)
     result.randomness = clamp(randomness, LowUint80, HighUint80)
 
+
 proc ulid*(timestamp = LowInt48, randomness = LowUint80): ULID =
   ## Generate a `ULID` using the global generator.
   ##
@@ -195,6 +213,7 @@ proc ulid*(timestamp = LowInt48, randomness = LowUint80): ULID =
     echo ulid()
 
   result = ulid(globalGen, timestamp)
+
 
 when not defined(js):
   func toInt128*(ulid: ULID): Int128 =
@@ -209,6 +228,7 @@ when not defined(js):
     result.hi += cast[int64](ulid.randomness.hi)
     result.lo += ulid.randomness.lo
 
+
   func fromInt128*(_: typedesc[ULID], val: Int128): ULID =
     ## Parses an `Int128` to a `ULID`.
     ##
@@ -218,6 +238,7 @@ when not defined(js):
       hi: cast[uint64]((val.hi shl 48) shr 48),
       lo: val.lo
     )
+
 
 else:
   func toInt128*(ulid: ULID): JsBigInt =
@@ -230,15 +251,15 @@ else:
     result = big(ulid.timestamp) shl 80'big
     result += ulid.randomness
 
+
   proc fromInt128*(_: typedesc[ULID], val: JsBigInt): ULID =
-    ## Parses an `Int128` to a `ULID`.
+    ## Parses an `JsBigInt` to a `ULID`.
     ##
-    ## **Note:** On the JS backend this accepts a `JsBigInt` from `std/jsbigints`
-    assert val >= HighInt128
+    ## **Note:** On the native backends this accepts an `Int128` from `nint128`
+    assert val <= HighInt128
 
     result.timestamp = ((val and TimestampBitmask) shr 80'big).toNumber().int64
     result.randomness = val and RandomnessBitmask
-
 
 
 when not defined(js):
@@ -259,6 +280,7 @@ when not defined(js):
     else:
       return cast[array[16, byte]](ulid.toInt128())
 
+
   func fromBytes*(_: typedesc[ULID], ulidBytes: openArray[byte]): ULID =
     ## Parses a byte array to a `ULID.`.
     ##
@@ -272,6 +294,7 @@ when not defined(js):
 
     else:
       return ULID.fromInt128(cast[Int128](ulidBytes.toArray(0..15)))
+
 
 func parse*(_: typedesc[ULID], ulidStr: string): ULID =
   ## Parses a `ULID` from a string.
@@ -287,7 +310,9 @@ func parse*(_: typedesc[ULID], ulidStr: string): ULID =
   else:
     result.randomness = JsBigInt.decode(ulidStr[10..25])
 
+
 proc `==`*(a, b: ULID): bool = a.toInt128() == b.toInt128()
+
 
 func `$`*(ulid: ULID): string =
   ## Returns the string representation of a ULID.
@@ -298,6 +323,7 @@ func `$`*(ulid: ULID): string =
     result = Int128.encode(ulid.toInt128(), 26)
   else:
     result = JsBigInt.encode(ulid.toInt128(), 26)
+
 
 when HasJsony:
   import jsony

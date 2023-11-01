@@ -1,6 +1,6 @@
 # NULID
 This is an implementation of the [ULID](https://github.com/ulid/spec)
-spec in Nim!
+spec in Nim! This also supports the JS backend for ULID generation!
 
 This supports [`jsony`](https://github.com/treeform/jsony) and
 [`debby`](https://github.com/treeform/debby) out of the box too!
@@ -13,8 +13,7 @@ via Termux!
 
 `-d:nulidNoLocks`: Disables any usage of locks within the program.
 
-The JS backend automatically defines `-d:nulidNoLocks` while Nimscript
-defines both of these flags.
+The JS backend automatically defines `-d:nulidNoLocks`.
 
 
 ## Usage
