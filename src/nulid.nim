@@ -176,6 +176,9 @@ proc wait(gen: ULIDGenerator): int64 {.gcsafe.} =
 proc ulid*(gen: ULIDGenerator, timestamp = LowInt48, randomness = LowUint80): ULID {.gcsafe.} =
   ## Generate a `ULID`, if timestamp is equal to `0`, the `randomness` parameter
   ## will be ignored.
+  ##
+  ## See also:
+  ## * `ulid(int64, UInt128) <#ulid_2>`_
   runnableExamples:
     let gen = initUlidGenerator()
 
@@ -208,7 +211,7 @@ proc ulid*(timestamp = LowInt48, randomness = LowUint80): ULID =
   ## Generate a `ULID` using the global generator.
   ##
   ## See also:
-  ## * `ulid(ULIDGenerator, int64, UInt128) <#ulid,ULIDGenerator,int64>`_
+  ## * `ulid(ULIDGenerator, int64, UInt128) <#ulid,ULIDGenerator>`_
   runnableExamples:
     echo ulid()
 
