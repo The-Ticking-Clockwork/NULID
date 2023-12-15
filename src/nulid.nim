@@ -208,7 +208,7 @@ proc ulid*(timestamp = LowInt48, randomness = LowUint80): ULID =
   ## Generate a `ULID` using the global generator.
   ##
   ## See also:
-  ## * `ulid(ULIDGenerator, int64, UInt128) <#ulid,ULIDGenerator,int64>`_
+  ## * `ulid(ULIDGenerator, int64, UInt128) <#ulid,ULIDGenerator>`_
   runnableExamples:
     echo ulid()
 
