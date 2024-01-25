@@ -1,5 +1,6 @@
 import std/[
-  times
+  times,
+  json
 ]
 
 import crockfordb32
@@ -28,10 +29,9 @@ when not NoLocks:
 Note: There are 2 defines that can be passed to the compiler to trigger different
 functionality in this library at runtime, they are listed here:
   - `--define:nulidInsecureRandom`: Uses `std/random` instead of `std/sysrand`.
-  - `--define:nulidNoLocks`
+  - `--define:nulidNoLocks`: Disables the use of locks.
 
-The JS backend used `-d:nulidNoLocks` by default and Nimscript uses both.
-these flags by default (whether either work with NULID is untested).
+The JS backend used `-d:nulidNoLocks` by default.
 ]##
 
 when not defined(js):
@@ -176,6 +176,9 @@ proc wait(gen: ULIDGenerator): int64 {.gcsafe.} =
 proc ulid*(gen: ULIDGenerator, timestamp = LowInt48, randomness = LowUint80): ULID {.gcsafe.} =
   ## Generate a `ULID`, if timestamp is equal to `0`, the `randomness` parameter
   ## will be ignored.
+  ##
+  ## See also:
+  ## * `ulid(int64, UInt128) <#ulid_2>`_
   runnableExamples:
     let gen = initUlidGenerator()
 
@@ -324,6 +327,14 @@ func `$`*(ulid: ULID): string =
   else:
     result = JsBigInt.encode(ulid.toInt128(), 26)
 
+# std/json support
+proc `%`*(u: ULID): JsonNode = newJString($u)
+
+proc to*(j: JsonNode, _: typedesc[ULID]): ULID =
+  if j.kind != JString:
+    raise newException(JsonKindError, "Expected a string!")
+
+  result = ULID.parse(j.getStr())
 
 when HasJsony:
   import jsony

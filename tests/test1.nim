@@ -4,8 +4,10 @@
 # the letter 't').
 #
 # To run these tests, simply execute `nimble test`.
-
-import unittest
+import std/[
+  unittest,
+  json
+]
 
 const UlidRandStr = "541019288874337045949482"
 
@@ -47,3 +49,9 @@ when not defined(js):
 
     check ulid == ULID.fromBytes(ulidBytes)
     check ulid.toBytes == ulidBytes
+
+test "ULID std/json support":
+  let ulid = ULID.parse("01H999MBGTEA8BDS0M5AWEBB1A")
+
+  check (%ulid).getStr() == "01H999MBGTEA8BDS0M5AWEBB1A"
+  check (%ulid).to(ULID) == ulid
