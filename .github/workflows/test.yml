@@ -1,7 +1,10 @@
 name: Run Tests
 
 on:
-  [push, pull_request]
+  pull_request
+  push:
+    branches:
+      - '**'
 
 env:
   nim-version: 'stable'
