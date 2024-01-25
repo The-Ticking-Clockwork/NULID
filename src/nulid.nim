@@ -58,7 +58,7 @@ type
   ULIDGenerator* = ref object
     ## A `ULID` generator object, contains details needed to follow the spec.
     ## A generator was made to be compliant with the ULID spec and also to be
-    ## threadsafe not use globals that could change.
+    ## threadsafe.
     when NoLocks:
       lastTime: int64 # Timestamp of last ULID, 48 bits
       when not defined(js):
@@ -328,9 +328,12 @@ func `$`*(ulid: ULID): string =
     result = JsBigInt.encode(ulid.toInt128(), 26)
 
 # std/json support
-proc `%`*(u: ULID): JsonNode = newJString($u)
+proc `%`*(u: ULID): JsonNode =
+  ## Serializes a `ULID` to JSON.
+  newJString($u)
 
 proc to*(j: JsonNode, _: typedesc[ULID]): ULID =
+  ## Deserializes a `ULID` from JSON.
   if j.kind != JString:
     raise newException(JsonKindError, "Expected a string!")
 
