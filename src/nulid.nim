@@ -1,3 +1,5 @@
+{.define: crockfordb32NintSupport.}
+
 import std/[
   times,
   json
